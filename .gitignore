@@ -3,3 +3,5 @@ venv
 .env
 .*env*
 description*
+DATABASE_NAME=postgresql
+PASSWORD=dittlösenord

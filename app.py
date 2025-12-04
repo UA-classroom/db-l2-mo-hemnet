@@ -19,6 +19,19 @@ but will have different HTTP-verbs.
 """
 
 
+@app.get("/test-db")
+def test_db():
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT 1;")
+        result = cur.fetchone()
+        conn.close()
+        return {"status": "Database connection successful", "result": result}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 # INSPIRATION FOR A LIST-ENDPOINT - Not necessary to use pydantic models, but we could to ascertain that we return the correct values
 # @app.get("/items/")
 # def read_items():
