@@ -354,3 +354,73 @@ def update_address(con, address_id, street, city, postcode, country):
                 (street, city, postcode, country, address_id),
             )
             return cur.fetchone()
+
+
+# FEATURE FUNCTIONS
+
+
+def get_all_features(con):
+    with con:
+        with con.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT * FROM features;")
+            return cur.fetchall()
+
+
+def get_one_feature(con, feature_id):
+    with con:
+        with con.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT * FROM features WHERE id = %s", (feature_id,))
+            return cur.fetchone()
+
+
+def create_feature(con, name):
+    with con:
+        with con.cursor() as cur:
+            cur.execute(
+                "INSERT INTO features (name) VALUES (%s) RETURNING id;", (name,)
+            )
+            return cur.fetchone()[0]
+
+
+def delete_feature(con, feature_id):
+    with con:
+        with con.cursor() as cur:
+            cur.execute(
+                "DELETE FROM features WHERE id = %s RETURNING id;", (feature_id,)
+            )
+            return cur.fetchone()
+
+
+def update_feature(con, feature_id, name):
+    with con:
+        with con.cursor() as cur:
+            cur.execute(
+                "UPDATE features SET name = %s WHERE id = %s RETURNING id;",
+                (name, feature_id),
+            )
+            return cur.fetchone()
+
+
+# PATCH LISTINGS FUNCTIONS
+
+
+def update_listing_price(con, listing_id, new_price):
+    with con:
+        with con.cursor() as cur:
+            # Updating the price.
+            cur.execute(
+                "UPDATE listings SET price = %s WHERE id = %s RETURNING id;",
+                (new_price, listing_id),
+            )
+            return cur.fetchone()
+
+
+def update_listing_status(con, listing_id, new_status_id):
+    with con:
+        with con.cursor() as cur:
+            # Updating the status_id.
+            cur.execute(
+                "UPDATE listings SET status_id = %s WHERE id = %s RETURNING id;",
+                (new_status_id, listing_id),
+            )
+            return cur.fetchone()

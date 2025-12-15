@@ -53,3 +53,15 @@ class AddressCreate(BaseModel):
     city: str
     postcode: str
     country: str
+
+
+class FeatureCreate(BaseModel):
+    name: str
+
+
+class ListingPriceUpdate(BaseModel):
+    price: float
+
+
+class ListingStatusUpdate(BaseModel):
+    status_id: int

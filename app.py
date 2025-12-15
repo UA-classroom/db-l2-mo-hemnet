@@ -2,7 +2,15 @@ import os
 import psycopg2
 from db_setup import get_connection
 from fastapi import FastAPI, HTTPException
-from schemas import ListingCreate, UserCreate, CompanyCreate, AddressCreate
+from schemas import (
+    ListingCreate,
+    UserCreate,
+    CompanyCreate,
+    AddressCreate,
+    FeatureCreate,
+    ListingPriceUpdate,
+    ListingStatusUpdate,
+)
 from db import (
     get_all_listings,
     get_one_listing,
@@ -24,6 +32,13 @@ from db import (
     create_address,
     delete_address,
     update_address,
+    get_all_features,
+    get_one_feature,
+    create_feature,
+    delete_feature,
+    update_feature,
+    update_listing_price,
+    update_listing_status,
 )
 
 """
@@ -321,3 +336,86 @@ def change_address(id: int, address: AddressCreate):
     if updated_id is None:
         raise HTTPException(status_code=404, detail="Address not found")
     return {"message": "Address updated successfully"}
+
+
+# FEATURE ENDPOINTS
+
+
+@app.get("/features")
+def read_features():
+    con = get_connection()
+    features = get_all_features(con)
+    con.close()
+    return {"features": features}
+
+
+@app.get("/features/{id}")
+def read_one_feature(id: int):
+    con = get_connection()
+    feature = get_one_feature(con, id)
+    con.close()
+    if feature is None:
+        raise HTTPException(status_code=404, detail="Feature not found")
+    return feature
+
+
+@app.post("/features")
+def add_feature(feature: FeatureCreate):
+    con = get_connection()
+    new_id = create_feature(con, feature.name)
+    con.commit()
+    con.close()
+    return {"message": "Feature created successfully", "id": new_id}
+
+
+@app.delete("/features/{id}")
+def remove_feature(id: int):
+    con = get_connection()
+    deleted_id = delete_feature(con, id)
+    con.commit()
+    con.close()
+    if deleted_id is None:
+        raise HTTPException(status_code=404, detail="Feature not found")
+    return {"message": "Feature deleted successfully"}
+
+
+@app.put("/features/{id}")
+def change_feature(id: int, feature: FeatureCreate):
+    con = get_connection()
+    updated_id = update_feature(con, id, feature.name)
+    con.commit()
+    con.close()
+    if updated_id is None:
+        raise HTTPException(status_code=404, detail="Feature not found")
+    return {"message": "Feature updated successfully"}
+
+
+# PATCH LISTINGS
+
+
+@app.patch("/listings/{id}/price")
+def update_price(id: int, update: ListingPriceUpdate):
+    con = get_connection()
+    # Adding the new price
+    updated_id = update_listing_price(con, id, update.price)
+    con.commit()
+    con.close()
+
+    if updated_id is None:
+        raise HTTPException(status_code=404, detail="Listing not found")
+
+    return {"message": "Price updated successfully"}
+
+
+@app.patch("/listings/{id}/status")
+def update_status(id: int, update: ListingStatusUpdate):
+    con = get_connection()
+    # Adding the new status
+    updated_id = update_listing_status(con, id, update.status_id)
+    con.commit()
+    con.close()
+
+    if updated_id is None:
+        raise HTTPException(status_code=404, detail="Listing not found")
+
+    return {"message": "Status updated successfully"}
