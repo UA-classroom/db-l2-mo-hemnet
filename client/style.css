@@ -1,0 +1,172 @@
+/* style.css - Moonhem Brand Identity */
+:root {
+    /* Moonhem Palette */
+    --primary: #81c7bf;
+    /* The Moonhem Teal */
+    --primary-dark: #6baea6;
+    /* Slightly darker teal for buttons */
+    --cream: #f9f7f0;
+    /* The Light Cream background */
+    --beige: #e6dcc3;
+    /* The Accent Beige */
+    --text-dark: #2c3e50;
+    --white: #ffffff;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--cream);
+    /* Cream Background */
+    margin: 0;
+    padding: 0;
+    color: var(--text-dark);
+}
+
+/* Navigation Bar */
+header {
+    background-color: var(--primary);
+    /* Teal Header */
+    padding: 20px 50px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+header h1 {
+    margin: 0;
+}
+
+header a.logo {
+    text-decoration: none;
+    color: var(--white);
+    font-size: 28px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Simple Moon Icon in CSS */
+.moon-icon {
+    width: 20px;
+    height: 20px;
+    background-color: transparent;
+    border-radius: 50%;
+    box-shadow: -6px 2px 0 2px var(--white);
+    margin-right: 10px;
+}
+
+nav a {
+    text-decoration: none;
+    color: var(--white);
+    margin-left: 25px;
+    font-weight: 500;
+    font-size: 1.1em;
+    transition: opacity 0.2s;
+}
+
+nav a:hover {
+    opacity: 0.8;
+}
+
+/* Main Container */
+.container {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+/* Grid Layout */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 30px;
+}
+
+/* House Card */
+.card {
+    background: var(--white);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(129, 199, 191, 0.2);
+    /* Teal tinted shadow */
+    transition: transform 0.3s, box-shadow 0.3s;
+    cursor: pointer;
+    border: 1px solid var(--beige);
+}
+
+.card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 10px 25px rgba(129, 199, 191, 0.4);
+}
+
+.card-img {
+    height: 220px;
+    background-color: var(--beige);
+    /* Beige placeholder */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 40px;
+}
+
+.card-body {
+    padding: 25px;
+}
+
+.card-title {
+    font-size: 1.25em;
+    color: var(--text-dark);
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.card-price {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: var(--primary);
+    margin: 10px 0;
+}
+
+.card-meta {
+    display: flex;
+    gap: 20px;
+    color: #7f8c8d;
+    font-size: 0.95em;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--cream);
+}
+
+/* Forms & Buttons */
+input,
+textarea,
+select {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 20px;
+    border: 1px solid var(--beige);
+    border-radius: 8px;
+    box-sizing: border-box;
+    background-color: var(--white);
+}
+
+.btn {
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    padding: 15px 25px;
+    border-radius: 8px;
+    cursor: pointer;
+    width: 100%;
+    font-size: 18px;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+.btn:hover {
+    background-color: var(--primary-dark);
+}

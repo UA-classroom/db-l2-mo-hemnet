@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyHemnet - Home</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <header>
+        <h1>
+            <a href="index.html" class="logo">
+                <div class="moon-icon"></div> MOONHEM
+            </a>
+        </h1>
+        <nav>
+            <a href="index.html">Buy</a>
+            <a href="admin.html">Sell (Admin)</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <h2 style="text-align: center; margin-bottom: 30px;">Find your dream home</h2>
+        <div id="listings-grid" class="grid">
+            <p style="grid-column: 1/-1; text-align: center;">Loading houses...</p>
+        </div>
+    </div>
+
+    <script>
+        async function loadListings() {
+            const grid = document.getElementById('listings-grid');
+            try {
+                // Fetch data from your API
+                const res = await fetch('http://127.0.0.1:8000/listings');
+                const data = await res.json();
+
+                grid.innerHTML = ''; // Clear "Loading..." text
+
+                data.listings.forEach(house => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    // When clicked, go to listing.html with the ID in the URL
+                    card.onclick = () => window.location.href = `listing.html?id=${house.id}`;
+
+                    card.innerHTML = `
+                        <div class="card-img">🏠</div>
+                        <div class="card-body">
+                            <div class="card-title">${house.title}</div>
+                            <div class="card-price">${house.price.toLocaleString()} SEK</div>
+                            <div class="card-meta">
+                                <span>📐 ${house.living_area} m²</span>
+                                <span>🚪 ${house.room_count} rum</span>
+                            </div>
+                            <div style="margin-top: 10px; font-size: 0.8em; color: #aaa;">
+                                Built ${house.year_built}
+                            </div>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            } catch (err) {
+                console.error(err);
+                grid.innerHTML = '<p style="color:red; text-align:center;">Could not load listings. Is your API server running?</p>';
+            }
+        }
+        loadListings();
+    </script>
+</body>
+
+</html>

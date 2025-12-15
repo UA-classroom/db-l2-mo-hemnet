@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>MyHemnet - Admin</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <header>
+        <h1><a href="index.html">🏡 MyHemnet</a></h1>
+        <nav>
+            <a href="index.html">Back to Home</a>
+        </nav>
+    </header>
+
+    <div class="container" style="max-width: 600px;">
+        <h2>Sell a House</h2>
+        <div style="background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+
+            <form id="sellForm">
+                <label>Title</label>
+                <input type="text" id="title" placeholder="e.g. Seaside Villa" required>
+
+                <label>Description</label>
+                <textarea id="desc" rows="3" placeholder="Tell us about the house..."></textarea>
+
+                <label>Price (SEK)</label>
+                <input type="number" id="price" required>
+
+                <div style="display: flex; gap: 10px;">
+                    <div style="flex:1">
+                        <label>Area (m²)</label>
+                        <input type="number" id="area" required>
+                    </div>
+                    <div style="flex:1">
+                        <label>Rooms</label>
+                        <input type="number" id="rooms" required>
+                    </div>
+                </div>
+
+                <input type="hidden" id="address_id" value="3">
+                <input type="hidden" id="realtor_id" value="1">
+                <input type="hidden" id="type_id" value="1">
+                <input type="hidden" id="status_id" value="1">
+
+                <button type="submit" class="btn">Publish Listing</button>
+            </form>
+            <p id="msg" style="margin-top: 15px; text-align: center; font-weight: bold;"></p>
+
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('sellForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // 1. Gather data from form
+            const payload = {
+                title: document.getElementById('title').value,
+                description: document.getElementById('desc').value,
+                price: parseFloat(document.getElementById('price').value),
+                living_area: parseFloat(document.getElementById('area').value),
+                room_count: parseInt(document.getElementById('rooms').value),
+                // Hardcoded defaults for simplicity
+                lot_size: 0,
+                year_built: 2024,
+                floor_number: 0,
+                energy_class: "C",
+                address_id: parseInt(document.getElementById('address_id').value),
+                property_type_id: parseInt(document.getElementById('type_id').value),
+                realtor_id: parseInt(document.getElementById('realtor_id').value),
+                status_id: parseInt(document.getElementById('status_id').value)
+            };
+
+            // 2. Send to API
+            try {
+                const res = await fetch('http://127.0.0.1:8000/listings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    document.getElementById('msg').style.color = 'green';
+                    document.getElementById('msg').innerText = '✅ Listing Published Successfully!';
+                    document.getElementById('sellForm').reset();
+                } else {
+                    throw new Error('Failed');
+                }
+            } catch (err) {
+                document.getElementById('msg').style.color = 'red';
+                document.getElementById('msg').innerText = '❌ Error publishing listing.';
+            }
+        });
+    </script>
+</body>
+
+</html>
