@@ -1,141 +1,356 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from db_setup import get_connection
-from typing import Optional, Dict, Any
 
-"""
-This file is responsible for making database queries, which your fastapi endpoints/routes can use.
-The reason we split them up is to avoid clutter in the endpoints, so that the endpoints might focus on other tasks 
-
-- Try to return results with cursor.fetchall() or cursor.fetchone() when possible
-- Make sure you always give the user response if something went right or wrong, sometimes 
-you might need to use the RETURNING keyword to garantuee that something went right / wrong
-e.g when making DELETE or UPDATE queries
-- No need to use a class here
-- Try to raise exceptions to make them more reusable and work a lot with returns
-- You will need to decide which parameters each function should receive. All functions 
-start with a connection parameter.
-- Below, a few inspirational functions exist - feel free to completely ignore how they are structured
-- E.g, if you decide to use psycopg3, you'd be able to directly use pydantic models with the cursor, these examples are however using psycopg2 and RealDictCursor
-"""
+# LISTINGS FUNCTIONS
 
 
-def get_all_users():
+def get_all_listings(con):
     """
-    Returns a list of all users as dictionaries.
+    Fetches all houses from the listings table.
     """
-    connection = get_connection()
-
-    with connection:
-        with connection.cursor(
-            cursor_factory=RealDictCursor
-        ) as cursor:  # RealDictCursor sort them as dic in better format.
-            cursor.execute("""
-                SELECT
-                    id,first_name, surname, mail, phone_number, created_at, birthdate, role, address_id, company_id
-                    from users;
-            """)
-
-            users = cursor.fetchall()  # List all user as a dict rows.
-            return users
+    with con:
+        # We use RealDictCursor so we get a dictionary like {'id': 1, 'title': 'Villa'}
+        # instead of just a list of numbers.
+        with con.cursor(cursor_factory=RealDictCursor) as cursor:
+            cursor.execute("SELECT * FROM listings;")
+            listings = cursor.fetchall()
+            return listings
 
 
-def get_user_by_id(user_id: int):
+def get_one_listing(con, listing_id):
     """
-    Returns a single user as a dict, or None if the user donsn't exist
+    Fetches a single house by its ID.
     """
+    with con:
+        with con.cursor(cursor_factory=RealDictCursor) as cursor:
+            # We use %s as a placeholder for the ID to prevent security issues (SQL Injection)
+            cursor.execute("SELECT * FROM listings WHERE id = %s", (listing_id,))
+            listing = (
+                cursor.fetchone()
+            )  # We use fetchone() because we expect only one result
+            return listing
+
+
+def create_listing(
+    con,
+    title,
+    description,
+    price,
+    living_area,
+    lot_size,
+    room_count,
+    year_built,
+    floor_number,
+    energy_class,
+    renovation_year,
+    address_id,
+    property_type_id,
+    realtor_id,
+    status_id,
+):
+    with con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO listings (
+                    title, description, price, living_area, lot_size, room_count, 
+                    year_built, floor_number, energy_class, renovation_year,
+                    address_id, property_type_id, realtor_id, status_id
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id;
+            """,
+                (
+                    title,
+                    description,
+                    price,
+                    living_area,
+                    lot_size,
+                    room_count,
+                    year_built,
+                    floor_number,
+                    energy_class,
+                    renovation_year,
+                    address_id,
+                    property_type_id,
+                    realtor_id,
+                    status_id,
+                ),
+            )
+
+            # We want to know the ID of the new house we just created
+            new_id = cur.fetchone()[0]
+            return new_id
+
+
+def delete_listing(con, listing_id):
+    with con:
+        with con.cursor() as cur:
+            cur.execute(
+                "DELETE FROM listings WHERE id = %s RETURNING id;", (listing_id,)
+            )
+            deleted_id = cur.fetchone()
+            return deleted_id  # This will be None if nothing was deleted
+
+
+def update_listing(
+    con,
+    listing_id,
+    title,
+    description,
+    price,
+    living_area,
+    lot_size,
+    room_count,
+    year_built,
+    floor_number,
+    energy_class,
+    renovation_year,
+    address_id,
+    property_type_id,
+    realtor_id,
+    status_id,
+):
+    """
+    Update all fields for specific listing.
+    """
+    with con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE listings
+                SET title = %s,
+                    description = %s,
+                    price = %s,
+                    living_area = %s,
+                    lot_size = %s,
+                    room_count = %s,
+                    year_built = %s,
+                    floor_number = %s,
+                    energy_class = %s,
+                    renovation_year = %s,
+                    address_id = %s,
+                    property_type_id = %s,
+                    realtor_id = %s,
+                    status_id = %s
+                WHERE id = %s
+                RETURNING id;
+                        """,
+                (
+                    title,
+                    description,
+                    price,
+                    living_area,
+                    lot_size,
+                    room_count,
+                    year_built,
+                    floor_number,
+                    energy_class,
+                    renovation_year,
+                    address_id,
+                    property_type_id,
+                    realtor_id,
+                    status_id,
+                    listing_id,
+                ),
+            )
+            update_id = cur.fetchone()
+            return update_id
+
+
+# USERS FUNCTIONS
+
+
+def get_all_users(con):
+    with con:
+        with con.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT * FROM users;")
+            return cur.fetchall()
 
 
 def create_user(
-    first_name: str,
-    surname: str,
-    mail: str,
-    password: str,
-    phone_number: Optional[str] = None,
-    birthdate: Optional[str] = None,
-    role: str = "customer",
-    address_id: Optional[int] = None,
-    company_id: Optional[int] = None,
-) -> Dict[str, any]:
-    connection = get_connection()
-    cursor = connection.cursor()
-
-    # Inserts a new user row into the database and returns the created user as a dict.
-    insert_query = """
-        INSERT INTO users (
-            first_name,
-            surname,
-            mail,
-            password,
-            phone_number,
-            birthdate,
-            role,
-            address_id,
-            company_id
-        )
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) 
-        RETURNING id, first_name, surname, mail, phone_number, created_id, birthdate, role, address_id, company_id;
-    """
-
-    cursor.execute(
-        insert_query,
-        (
-            first_name,
-            surname,
-            mail,
-            password,
-            phone_number,
-            birthdate,
-            role,
-            address_id,
-            company_id,
-        ),
-    )
-
-    row = cursor.fetchone()  # Getting the return Row
-    connection.commit()
-    cursor.close()
-    connection.close()
-
-    return {
-        "id": row[0],
-        "first_name": row[1],
-        "surname": row[2],
-        "mail": row[3],
-        "phone_number": row[4],
-        "created_at": row[5],
-        "birthdate": row[6],
-        "role": row[7],
-        "address_id": row[8],
-        "company_id": row[9],
-    }
+    con,
+    first_name,
+    surname,
+    mail,
+    password,
+    phone_number,
+    birthdate,
+    role_id,
+    address_id,
+    company_id,
+):
+    with con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO users (first_name, surname, mail, password, phone_number, birthdate, role_id, address_id, company_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)                     
+                        RETURNING id;
+                """,
+                (
+                    first_name,
+                    surname,
+                    mail,
+                    password,
+                    phone_number,
+                    birthdate,
+                    role_id,
+                    address_id,
+                    company_id,
+                ),
+            )
+            return cur.fetchone()[0]
 
 
-### THIS IS JUST AN EXAMPLE OF A FUNCTION FOR INSPIRATION FOR A LIST-OPERATION (FETCHING MANY ENTRIES)
-# def get_items(con):
-#     with con:
-#         with con.cursor(cursor_factory=RealDictCursor) as cursor:
-#             cursor.execute("SELECT * FROM items;")
-#             items = cursor.fetchall()
-#     return items
+def get_one_user(con, user_id):
+    with con:
+        with con.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+            return cur.fetchone()
 
 
-### THIS IS JUST INSPIRATION FOR A DETAIL OPERATION (FETCHING ONE ENTRY)
-# def get_item(con, item_id):
-#     with con:
-#         with con.cursor(cursor_factory=RealDictCursor) as cursor:
-#             cursor.execute("""SELECT * FROM items WHERE id = %s""", (item_id,))
-#             item = cursor.fetchone()
-#             return item
+def delete_user(con, user_id):
+    with con:
+        with con.cursor() as cur:
+            cur.execute("DELETE FROM users WHERE id = %s RETURNING id;", (user_id,))
+            return cur.fetchone()
 
 
-### THIS IS JUST INSPIRATION FOR A CREATE-OPERATION
-# def add_item(con, title, description):
-#     with con:
-#         with con.cursor(cursor_factory=RealDictCursor) as cursor:
-#             cursor.execute(
-#                 "INSERT INTO items (title, description) VALUES (%s, %s) RETURNING id;",
-#                 (title, description),
-#             )
-#             item_id = cursor.fetchone()["id"]
-#     return item_id
+def update_user(
+    con,
+    user_id,
+    first_name,
+    surname,
+    mail,
+    password,
+    phone_number,
+    birthdate,
+    role_id,
+    address_id,
+    company_id,
+):
+    with con:
+        with con.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE users 
+                SET first_name = %s,
+                    surname = %s,
+                    mail = %s,
+                    password = %s,
+                    phone_number = %s,
+                    birthdate = %s,
+                    role_id = %s,
+                    address_id = %s,
+                    company_id = %s
+                WHERE id = %s
+                RETURNING id;
+            """,
+                (
+                    first_name,
+                    surname,
+                    mail,
+                    password,
+                    phone_number,
+                    birthdate,
+                    role_id,
+                    address_id,
+                    company_id,
+                    user_id,
+                ),
+            )
+            return cur.fetchone()
+
+
+# COMPANIES FUNCTIONS
+
+
+def get_all_companies(con):
+    with con:
+        with con.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT * FROM realtor_companies;")
+            return cur.fetchall()
+
+
+def get_one_company(con, company_id):
+    with con:
+        with con.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT * FROM realtor_companies WHERE id = %s", (company_id,))
+            return cur.fetchone()
+
+
+def create_company(con, name, address_id):
+    with con:
+        with con.cursor() as cur:
+            cur.execute(
+                "INSERT INTO realtor_companies (name, address_id) VALUES (%s, %s) RETURNING id;",
+                (name, address_id),
+            )
+            return cur.fetchone()[0]
+
+
+def delete_company(con, company_id):
+    with con:
+        with con.cursor() as cur:
+            cur.execute(
+                "DELETE FROM realtor_companies WHERE id = %s RETURNING id;",
+                (company_id,),
+            )
+            return cur.fetchone()
+
+
+def update_company(con, company_id, name, address_id):
+    with con:
+        with con.cursor() as cur:
+            cur.execute(
+                "UPDATE realtor_companies SET name = %s, address_id = %s WHERE id = %s RETURNING id;",
+                (name, address_id, company_id),
+            )
+            return cur.fetchone()
+
+
+# ADDRESSES FUNCTIONS
+
+
+def get_all_addresses(con):
+    with con:
+        with con.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT * FROM addresses;")
+            return cur.fetchall()
+
+
+def get_one_address(con, address_id):
+    with con:
+        with con.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT * FROM addresses WHERE id = %s", (address_id,))
+            return cur.fetchone()
+
+
+def create_address(con, street, city, postcode, country):
+    with con:
+        with con.cursor() as cur:
+            cur.execute(
+                "INSERT INTO addresses (street, city, postcode, country) VALUES (%s, %s, %s, %s) RETURNING id;",
+                (street, city, postcode, country),
+            )
+            return cur.fetchone()[0]
+
+
+def delete_address(con, address_id):
+    with con:
+        with con.cursor() as cur:
+            cur.execute(
+                "DELETE FROM addresses WHERE id = %s RETURNING id;", (address_id,)
+            )
+            return cur.fetchone()
+
+
+def update_address(con, address_id, street, city, postcode, country):
+    with con:
+        with con.cursor() as cur:
+            cur.execute(
+                "UPDATE addresses SET street = %s, city = %s, postcode = %s, country = %s WHERE id = %s RETURNING id;",
+                (street, city, postcode, country, address_id),
+            )
+            return cur.fetchone()
