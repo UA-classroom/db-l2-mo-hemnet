@@ -19,8 +19,6 @@ from psycopg2.extras import RealDictCursor
 from fastapi.middleware.cors import CORSMiddleware
 
 from server.db import (
-    get_all_listings,
-    get_one_listing,
     create_listing,
     delete_listing,
     update_listing,
@@ -106,37 +104,6 @@ Read more: https://www.geeksforgeeks.org/10-most-common-http-status-codes/
 - Use correct URL paths the resource, e.g some endpoints should be located at the exact same URL, 
 but will have different HTTP-verbs.
 """
-
-
-# This is our first "Endpoint" (Menu Item)
-# @app.get("/listings")
-# def read_listings():
-#     # 1. Open the connection to the database
-#     con = get_connection()
-
-#     # 2. Ask the 'db.py' function to get the listings
-#     listings = get_all_listings(con)
-
-#     # 3. Close the connection (Clean up)
-#     con.close()
-
-#     # 4. Give the result to the user
-#     return {"listings": listings}
-
-
-# @app.get("/listings/{id}")
-# def read_one_listing(id: int):
-# con = get_connection()
-# listing = get_one_listing(con, id)
-# con.close()
-
-# # If the house doesn't exist (like ID 999), we should tell the user.
-# if listing is None:
-#     raise HTTPException(status_code=404, detail="Listing not found")
-
-# return listing
-
-# WEBSITE ADDING
 
 
 @app.get("/listings")

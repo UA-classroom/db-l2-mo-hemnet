@@ -5,33 +5,6 @@ from psycopg2.extras import RealDictCursor
 # LISTINGS FUNCTIONS
 
 
-def get_all_listings(con):
-    """
-    Fetches all houses from the listings table.
-    """
-    with con:
-        # We use RealDictCursor so we get a dictionary like {'id': 1, 'title': 'Villa'}
-        # instead of just a list of numbers.
-        with con.cursor(cursor_factory=RealDictCursor) as cursor:
-            cursor.execute("SELECT * FROM listings;")
-            listings = cursor.fetchall()
-            return listings
-
-
-def get_one_listing(con, listing_id):
-    """
-    Fetches a single house by its ID.
-    """
-    with con:
-        with con.cursor(cursor_factory=RealDictCursor) as cursor:
-            # We use %s as a placeholder for the ID to prevent security issues (SQL Injection)
-            cursor.execute("SELECT * FROM listings WHERE id = %s", (listing_id,))
-            listing = (
-                cursor.fetchone()
-            )  # We use fetchone() because we expect only one result
-            return listing
-
-
 def create_listing(
     con,
     title,

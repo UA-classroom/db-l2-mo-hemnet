@@ -1,5 +1,7 @@
 import os
+import random
 import psycopg2
+from datetime import date
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
@@ -18,124 +20,325 @@ def get_connection():
     )
 
 
-def seed_database():
+CITIES = [
+    ("Stockholm", "11122"),
+    ("Gothenburg", "41100"),
+    ("Malmö", "21100"),
+    ("Uppsala", "75310"),
+    ("Västerås", "72210"),
+    ("Linköping", "58220"),
+]
+
+STREETS = [
+    "Storgatan",
+    "Kungsgatan",
+    "Drottninggatan",
+    "Parkvägen",
+    "Skogsvägen",
+    "Strandvägen",
+    "Stationsgatan",
+    "Ängsvägen",
+]
+
+FIRST_NAMES = [
+    "Erik",
+    "Anna",
+    "Noah",
+    "Liam",
+    "William",
+    "Alice",
+    "Maja",
+    "Olivia",
+    "Ebba",
+    "Hugo",
+]
+SURNAMES = [
+    "Andersson",
+    "Johansson",
+    "Karlsson",
+    "Nilsson",
+    "Eriksson",
+    "Larsson",
+    "Persson",
+    "Svensson",
+]
+
+ENERGY_CLASSES = ["A", "B", "C", "D", "E", "F", "G"]
+
+LISTING_IMAGE_URLS = [
+    "https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=1600&q=70",
+    "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1600&q=70",
+    "https://images.unsplash.com/photo-1572120360610-d971b9d7767c?auto=format&fit=crop&w=1600&q=70",
+    "https://images.unsplash.com/photo-1502005229762-cf1b2da7c5d6?auto=format&fit=crop&w=1600&q=70",
+    "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=1600&q=70",
+]
+
+
+def rand_phone():
+    return "07" + "".join(str(random.randint(0, 9)) for _ in range(8))
+
+
+def rand_birthdate():
+    y = random.randint(1960, 2006)
+    return date(y, random.randint(1, 12), random.randint(1, 28))
+
+
+def rand_name():
+    return random.choice(FIRST_NAMES), random.choice(SURNAMES)
+
+
+def rand_email(first, last, i):
+    return f"{first.lower()}.{last.lower()}{i}@moonhem.example"
+
+
+def insert_address(cur):
+    city, postcode = random.choice(CITIES)
+    street = random.choice(STREETS)
+    street_full = f"{street} {random.randint(1, 99)}"
+    cur.execute(
+        "INSERT INTO addresses (street, city, postcode, country) VALUES (%s,%s,%s,%s) RETURNING id",
+        (street_full, city, postcode, "Sweden"),
+    )
+    return cur.fetchone()[0]
+
+
+def seed_database(
+    n_companies=6,
+    n_realtors=10,
+    n_buyers=20,
+    n_listings=80,
+):
     print("Starting to seed database...")
 
     con = get_connection()
     cur = con.cursor()
 
     try:
-        # 1. CLEANUP (Optional but helpful)
-        # This deletes old data so we don't get duplicates if we run this script twice.
-        # CASCADE means "delete everything connected to it too".
+        # 1) CLEANUP (order doesn't matter if CASCADE is used)
         print("Clearing old data...")
         tables = [
-            "roles",
-            "addresses",
-            "realtor_companies",
-            "users",
-            "property_types",
-            "status",
-            "features",
-            "listings",
-            "listing_features",
-            "favorite",
             "messages",
+            "favorite",
+            "listing_features",
             "listing_images",
-            "user_images",
             "realtor_agent",
+            "listings",
+            "features",
+            "status",
+            "property_types",
+            "users",
+            "realtor_companies",
+            "addresses",
+            "roles",
+            "user_images",
         ]
         for table in tables:
             cur.execute(f"TRUNCATE TABLE {table} RESTART IDENTITY CASCADE;")
 
-        # 2. INSERT ROLES
-        print("   Inserting Roles...")
+        # 2) ROLES
+        print("Inserting roles...")
         roles = [
             ("Admin", "Super user"),
             ("Realtor", "Can sell houses"),
             ("User", "Looking to buy"),
         ]
-        for role in roles:
-            cur.execute("INSERT INTO roles (name, description) VALUES (%s, %s)", role)
-
-        # 3. INSERT STATUS
-        print("   Inserting Statuses...")
-        statuses = ["For Sale", "Sold", "Bidding in progress"]
-        for s in statuses:
-            cur.execute("INSERT INTO status (status) VALUES (%s)", (s,))
-
-        # 4. INSERT PROPERTY TYPES
-        print("   Inserting Property Types...")
-        types = ["Villa", "Apartment", "Cottage", "Row House"]
-        for t in types:
-            cur.execute("INSERT INTO property_types (name) VALUES (%s)", (t,))
-
-        # 5. INSERT FEATURES
-        print("   Inserting Features...")
-        features = ["Balcony", "Fireplace", "Pool", "Garage", "Elevator"]
-        for f in features:
-            cur.execute("INSERT INTO features (name) VALUES (%s)", (f,))
-
-        # 6. INSERT ADDRESSES (We need these for users and listings)
-        print("   Inserting Addresses...")
-        # We will assume ID 1, 2, 3, 4 are created in order
-        addresses = [
-            ("Storgatan 1", "Stockholm", "11122", "Sweden"),  # ID 1
-            ("Kungsgatan 5", "Gothenburg", "41100", "Sweden"),  # ID 2 (For a company)
-            ("Långvägen 10", "Malmö", "21100", "Sweden"),  # ID 3 (For a house listing)
-            ("Strandvägen 99", "Stockholm", "11400", "Sweden"),  # ID 4 (For a user)
-        ]
-        for addr in addresses:
+        role_ids = {}
+        for name, desc in roles:
             cur.execute(
-                "INSERT INTO addresses (street, city, postcode, country) VALUES (%s, %s, %s, %s)",
-                addr,
+                "INSERT INTO roles (name, description) VALUES (%s,%s) RETURNING id",
+                (name, desc),
+            )
+            role_ids[name] = cur.fetchone()[0]
+
+        # 3) STATUS
+        print("Inserting statuses...")
+        statuses = ["For Sale", "Sold", "Bidding in progress"]
+        status_ids = {}
+        for s in statuses:
+            cur.execute("INSERT INTO status (status) VALUES (%s) RETURNING id", (s,))
+            status_ids[s] = cur.fetchone()[0]
+
+        # 4) PROPERTY TYPES
+        print("Inserting property types...")
+        types = ["Villa", "Apartment", "Cottage", "Row House"]
+        type_ids = {}
+        for t in types:
+            cur.execute(
+                "INSERT INTO property_types (name) VALUES (%s) RETURNING id", (t,)
+            )
+            type_ids[t] = cur.fetchone()[0]
+
+        # 5) FEATURES
+        print("Inserting features...")
+        features = [
+            "Balcony",
+            "Fireplace",
+            "Pool",
+            "Garage",
+            "Elevator",
+            "Garden",
+            "Sauna",
+        ]
+        feature_ids = []
+        for f in features:
+            cur.execute("INSERT INTO features (name) VALUES (%s) RETURNING id", (f,))
+            feature_ids.append(cur.fetchone()[0])
+
+        # 6) REALTOR COMPANIES
+        print("Inserting realtor companies...")
+        company_ids = []
+        for i in range(n_companies):
+            addr_id = insert_address(cur)
+            company_name = f"MoonHem Agency {i + 1}"
+            cur.execute(
+                "INSERT INTO realtor_companies (name, address_id) VALUES (%s,%s) RETURNING id",
+                (company_name, addr_id),
+            )
+            company_ids.append(cur.fetchone()[0])
+
+        # 7) USERS (realtors + buyers)
+        print("Inserting users...")
+        realtor_user_ids = []
+        buyer_user_ids = []
+
+        # Realtors
+        for i in range(n_realtors):
+            first, last = rand_name()
+            mail = rand_email(first, last, 1000 + i)
+            addr_id = insert_address(cur)
+            company_id = random.choice(company_ids)
+
+            cur.execute(
+                """
+                INSERT INTO users (first_name, surname, mail, password, phone_number, role_id, address_id, company_id, birthdate)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                RETURNING id
+                """,
+                (
+                    first,
+                    last,
+                    mail,
+                    "secret123",
+                    rand_phone(),
+                    role_ids["Realtor"],
+                    addr_id,
+                    company_id,
+                    rand_birthdate(),
+                ),
+            )
+            user_id = cur.fetchone()[0]
+            realtor_user_ids.append(user_id)
+
+            # realtor_agent extra info
+            cur.execute(
+                "INSERT INTO realtor_agent (user_id, license_number) VALUES (%s,%s)",
+                (user_id, f"LIC-{random.randint(100000, 999999)}"),
             )
 
-        # 7. INSERT REALTOR COMPANIES
-        print("   Inserting Realtor Companies...")
-        # Uses address_id 2
-        cur.execute("""
-            INSERT INTO realtor_companies (name, address_id) 
-            VALUES ('Best Hem Agency', 2)
-        """)
+        # Buyers
+        for i in range(n_buyers):
+            first, last = rand_name()
+            mail = rand_email(first, last, 2000 + i)
+            addr_id = insert_address(cur)
 
-        # 8. INSERT USERS
-        print("   Inserting Users...")
-        # User 1: The Realtor (Role ID 2, Address ID 1, Company ID 1)
-        cur.execute("""
-            INSERT INTO users (first_name, surname, mail, password, phone_number, role_id, address_id, company_id, birthdate)
-            VALUES ('Erik', 'Mäklare', 'erik@besthem.se', 'secret123', '0701234567', 2, 1, 1, '1985-05-20')
-        """)
-
-        # User 2: The Buyer (Role ID 3, Address ID 4, No Company)
-        cur.execute("""
-            INSERT INTO users (first_name, surname, mail, password, phone_number, role_id, address_id, company_id, birthdate)
-            VALUES ('Anna', 'Andersson', 'anna@gmail.com', 'buyer123', '0709876543', 3, 4, NULL, '1992-11-10')
-        """)
-
-        # 9. INSERT LISTINGS (The Houses)
-        print("   Inserting Listings...")
-        # A Villa (Type 1), Sold by Erik (User 1), At Address 3, Status 'For Sale' (Status 1)
-        cur.execute("""
-            INSERT INTO listings (
-                title, description, price, living_area, lot_size, room_count, 
-                year_built, floor_number, energy_class, renovation_year,
-                address_id, property_type_id, realtor_id, status_id
+            cur.execute(
+                """
+                INSERT INTO users (first_name, surname, mail, password, phone_number, role_id, address_id, company_id, birthdate)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,NULL,%s)
+                RETURNING id
+                """,
+                (
+                    first,
+                    last,
+                    mail,
+                    "buyer123",
+                    rand_phone(),
+                    role_ids["User"],
+                    addr_id,
+                    rand_birthdate(),
+                ),
             )
-            VALUES (
-                'Beautiful Villa in Malmö', 'A lovely house close to the sea.', 
-                5000000.00, 150.5, 800.0, 5, 2010, 0, 'B', 2022,
-                3, 1, 1, 1
-            )
-        """)
+            buyer_user_ids.append(cur.fetchone()[0])
 
-        # Commit the changes (Save effectively)
+        # 8) LISTINGS
+        print("Inserting listings...")
+        listing_ids = []
+        for i in range(n_listings):
+            addr_id = insert_address(cur)
+            realtor_id = random.choice(realtor_user_ids)
+            status_id = random.choice(list(status_ids.values()))
+            property_type_id = random.choice(list(type_ids.values()))
+
+            # Generate numbers
+            living_area = round(random.uniform(25, 240), 2)
+            room_count = random.randint(1, 8)
+            lot_size = round(random.uniform(0, 2500), 2)
+            year_built = random.randint(1930, 2024)
+            floor_number = random.randint(0, 12)
+            price = round(living_area * random.randint(25000, 65000), 2)
+
+            title = f"Modern home #{i + 1}"
+            description = "Bright and well-planned home with great location, close to transport and services."
+
+            cur.execute(
+                """
+                INSERT INTO listings (
+                    title, description, price, living_area, lot_size, room_count,
+                    year_built, floor_number, energy_class, renovation_year,
+                    address_id, property_type_id, realtor_id, status_id
+                )
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                RETURNING id
+                """,
+                (
+                    title,
+                    description,
+                    price,
+                    living_area,
+                    lot_size,
+                    room_count,
+                    year_built,
+                    floor_number,
+                    random.choice(ENERGY_CLASSES),
+                    random.choice([None, None, random.randint(1995, 2024)]),
+                    addr_id,
+                    property_type_id,
+                    realtor_id,
+                    status_id,
+                ),
+            )
+            listing_id = cur.fetchone()[0]
+            listing_ids.append(listing_id)
+
+            # listing_images (1-5)
+            for j in range(random.randint(1, 5)):
+                cur.execute(
+                    "INSERT INTO listing_images (listing_id, caption, url) VALUES (%s,%s,%s)",
+                    (listing_id, f"Photo {j + 1}", random.choice(LISTING_IMAGE_URLS)),
+                )
+
+            # listing_features (0-5)
+            for fid in random.sample(
+                feature_ids, k=random.randint(0, min(5, len(feature_ids)))
+            ):
+                cur.execute(
+                    """
+                    INSERT INTO listing_features (listing_id, feature_id)
+                    VALUES (%s,%s)
+                    ON CONFLICT (listing_id, feature_id) DO NOTHING
+                    """,
+                    (listing_id, fid),
+                )
+
         con.commit()
-        print("Database seeded successfully!")
+        print("✅ Database seeded successfully!")
+        print(
+            f"Inserted: {len(company_ids)} companies, {len(realtor_user_ids)} realtors, {len(buyer_user_ids)} buyers, {len(listing_ids)} listings"
+        )
 
     except Exception as e:
-        print(f"Error seeding database: {e}")
-        con.rollback()  # Undo changes if something went wrong
+        print(f"❌ Error seeding database: {e}")
+        con.rollback()
     finally:
         con.close()
 
