@@ -5,6 +5,46 @@ from psycopg2.extras import RealDictCursor
 # LISTINGS FUNCTIONS
 
 
+def get_all_listings_full(con):
+    with con, con.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            """
+            SELECT
+                l.*,
+                a.street AS address,
+                a.city,
+                a.postcode,
+                a.country,
+                pt.name AS property_type
+            FROM listings l
+            LEFT JOIN addresses a ON l.address_id = a.id
+            LEFT JOIN property_types pt ON l.property_type_id = pt.id;
+            """
+        )
+        return cur.fetchall()
+
+
+def get_one_listing_full(con, listing_id):
+    with con, con.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            """
+            SELECT
+                l.*,
+                a.street AS address,
+                a.city,
+                a.postcode,
+                a.country,
+                pt.name AS property_type
+            FROM listings l
+            LEFT JOIN addresses a ON l.address_id = a.id
+            LEFT JOIN property_types pt ON l.property_type_id = pt.id
+            WHERE l.id = %s;
+            """,
+            (listing_id,),
+        )
+        return cur.fetchone()
+
+
 def create_listing(
     con,
     title,
@@ -130,46 +170,6 @@ def update_listing(
             )
             update_id = cur.fetchone()
             return update_id
-
-
-def get_all_listings_full(con):
-    with con, con.cursor(cursor_factory=RealDictCursor) as cur:
-        cur.execute(
-            """
-            SELECT
-                l.*,
-                a.street AS address,
-                a.city,
-                a.postcode,
-                a.country,
-                pt.name AS property_type
-            FROM listings l
-            LEFT JOIN addresses a ON l.address_id = a.id
-            LEFT JOIN property_types pt ON l.property_type_id = pt.id;
-            """
-        )
-        return cur.fetchall()
-
-
-def get_one_listing_full(con, listing_id):
-    with con, con.cursor(cursor_factory=RealDictCursor) as cur:
-        cur.execute(
-            """
-            SELECT
-                l.*,
-                a.street AS address,
-                a.city,
-                a.postcode,
-                a.country,
-                pt.name AS property_type
-            FROM listings l
-            LEFT JOIN addresses a ON l.address_id = a.id
-            LEFT JOIN property_types pt ON l.property_type_id = pt.id
-            WHERE l.id = %s;
-            """,
-            (listing_id,),
-        )
-        return cur.fetchone()
 
 
 # USERS FUNCTIONS
