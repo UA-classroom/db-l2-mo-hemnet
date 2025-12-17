@@ -442,7 +442,7 @@ function ListingCard({ item, onDetails, saved, onToggleFavorite }) {
                     aria-label={saved ? "Remove from saved" : "Save listing"}
                     onClick={onToggleFavorite}
                 >
-                    {saved ? "Saved" : "Save"}
+                    {saved ? "♥" : "♡"}
                 </button>
 
                 <div className="mh-pillTag">{labelType(item.property_type)}</div>
