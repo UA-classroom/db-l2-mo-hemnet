@@ -24,6 +24,9 @@ const sample = {
 
 export default function ListingDetailPage({ listing, onBack, user }) {
     const l = listing ?? sample;
+    const mapQuery = [l.address, l.city].filter(Boolean).join(", ") || "Sweden";
+    // Use maps.google.com embed (works without API key); include zoom for clarity.
+    const mapSrc = `https://maps.google.com/maps?hl=en&q=${encodeURIComponent(mapQuery)}&t=&z=14&ie=UTF8&iwloc=B&output=embed`;
     const [message, setMessage] = useState("");
     const [status, setStatus] = useState("idle"); // idle | sending | error | sent
     const [error, setError] = useState("");
@@ -162,6 +165,30 @@ export default function ListingDetailPage({ listing, onBack, user }) {
                             </div>
                         ) : null}
                     </div>
+                </div>
+
+                <div className="mh-detailSection">
+                    <h3>Location</h3>
+                    <div className="mh-muted">{mapQuery}</div>
+                    <div className="mh-mapEmbed">
+                        <iframe
+                            title="Listing location"
+                            className="mh-mapIframe"
+                            src={mapSrc}
+                            allowFullScreen
+                            loading="lazy"
+                            referrerPolicy="no-referrer-when-downgrade"
+                        />
+                    </div>
+                    <a
+                        className="mh-link"
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ marginTop: 6, display: "inline-block" }}
+                    >
+                        Open in Google Maps
+                    </a>
                 </div>
             </div>
 

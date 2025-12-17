@@ -8,13 +8,13 @@ export default {
         extend: {
             colors: {
                 green: {
-                    900: '#0f3d3c',
-                    700: '#1e605b',
-                    500: '#2c8b82',
+                    900: '#0085c9',
+                    700: '#0077b6',
+                    500: '#4bb3e3',
                 },
                 gold: '#d7b46d',
-                cream: '#f6f5f1',
-                muted: '#61726f',
+                cream: '#ffffff',
+                muted: '#5d6065',
             },
         },
     },

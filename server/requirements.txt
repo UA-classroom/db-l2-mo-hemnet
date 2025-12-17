@@ -4,3 +4,5 @@ python-dotenv
 fastapi[standard]
 uvicorn
 email-validator
+passlib[bcrypt]
+pyjwt

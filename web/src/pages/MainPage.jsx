@@ -32,6 +32,16 @@ export default function MainPage({ onOpenListing, onOpenArticle, user }) {
     const [error, setError] = useState("");
     const [selected, setSelected] = useState(null); // used when no onOpenListing is provided
     const [page, setPage] = useState(1);
+    const [favorites, setFavorites] = useState(() => {
+        if (typeof localStorage === "undefined") return new Set();
+        try {
+            const raw = JSON.parse(localStorage.getItem("mh_favs") || "[]");
+            return new Set(Array.isArray(raw) ? raw : []);
+        } catch {
+            return new Set();
+        }
+    });
+    const [mapIndex, setMapIndex] = useState(0);
     const pageSize = 9;
 
     const queryString = useMemo(() => {
@@ -137,6 +147,26 @@ export default function MainPage({ onOpenListing, onOpenArticle, user }) {
     const currentPage = Math.min(page, pageCount);
     const pagedItems = items.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
+    const mapAddresses = useMemo(
+        () =>
+            items
+                .map((l) => {
+                    const label = [l.address, l.city].filter(Boolean).join(", ");
+                    return label ? { label, query: label } : null;
+                })
+                .filter(Boolean)
+                .slice(0, 5),
+        [items]
+    );
+    useEffect(() => setMapIndex(0), [mapAddresses.length]);
+    const mapQuery = mapAddresses[mapIndex]?.query ?? "";
+    const mapSrc = mapQuery
+        ? `https://maps.google.com/maps?hl=en&q=${encodeURIComponent(mapQuery)}&t=&z=12&ie=UTF8&iwloc=B&output=embed`
+        : "";
+    const mapSearchLink = mapQuery
+        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`
+        : "";
+
     const handleDetails = (listing) => {
         if (onOpenListing) {
             onOpenListing(listing);
@@ -145,13 +175,38 @@ export default function MainPage({ onOpenListing, onOpenArticle, user }) {
         }
     };
 
+    const toggleFavorite = (listing) => {
+        const id = listing?.id ?? listing?.listing_id;
+        if (id == null) return;
+        setFavorites((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            if (typeof localStorage !== "undefined") {
+                localStorage.setItem("mh_favs", JSON.stringify(Array.from(next)));
+            }
+            return next;
+        });
+    };
+
+    const resetFilters = () =>
+        setFilters({
+            q: "",
+            type: "all",
+            roomsMin: "",
+            roomsMax: "",
+            priceMin: "",
+            priceMax: "",
+            sort: "newest",
+        });
+
     return (
         <div className="mh-page">
             <div
                 className="mh-hero hero-large"
                 style={{
                     backgroundImage:
-                        "linear-gradient(180deg, rgba(15,61,60,0.55) 0%, rgba(15,61,60,0.78) 40%, rgba(15,61,60,0.82) 100%), url('https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=1600&q=80')",
+                        "linear-gradient(180deg, rgba(0,133,201,0.55) 0%, rgba(52,53,55,0.78) 40%, rgba(52,53,55,0.9) 100%), url('https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=1600&q=80')",
                 }}
             >
                 <div className="mh-heroContent">
@@ -190,6 +245,30 @@ export default function MainPage({ onOpenListing, onOpenArticle, user }) {
                 </div>
             </div>
 
+            <div className="mh-detailSection" style={{ marginTop: 10 }}>
+                <h3>Map of available listings</h3>
+                <div className="mh-muted">Showing up to 5 addresses from your current results.</div>
+                <div className="mh-mapEmbed" style={{ marginTop: 10 }}>
+                    <iframe
+                        title="Listings map"
+                        className="mh-mapIframe"
+                        src={mapSrc}
+                        allowFullScreen
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                    />
+                </div>
+                <a
+                    className="mh-link"
+                    href={mapSearchLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ marginTop: 6, display: "inline-block" }}
+                >
+                    Open in Google Maps
+                </a>
+            </div>
+
             <div className="mh-inlineFilters">
                 <input
                     className="mh-input"
@@ -224,6 +303,9 @@ export default function MainPage({ onOpenListing, onOpenArticle, user }) {
                 />
                 <button className="mh-btn" type="button" onClick={() => setFilters((f) => ({ ...f, q: f.q.trim() }))}>
                     Find homes
+                </button>
+                <button className="mh-ghost" type="button" onClick={resetFilters}>
+                    Reset filters
                 </button>
             </div>
 
@@ -271,7 +353,13 @@ export default function MainPage({ onOpenListing, onOpenArticle, user }) {
 
                     <div className="mh-grid">
                         {pagedItems.map((x) => (
-                            <ListingCard key={x.id} item={x} onDetails={() => handleDetails(x)} />
+                            <ListingCard
+                                key={x.id}
+                                item={x}
+                                saved={favorites.has(x.id)}
+                                onToggleFavorite={() => toggleFavorite(x)}
+                                onDetails={() => handleDetails(x)}
+                            />
                         ))}
 
                         {status !== "loading" && pagedItems.length === 0 && status !== "error" && (
@@ -333,8 +421,7 @@ export default function MainPage({ onOpenListing, onOpenArticle, user }) {
     );
 }
 
-function ListingCard({ item, onDetails }) {
-    const [saved, setSaved] = useState(false);
+function ListingCard({ item, onDetails, saved, onToggleFavorite }) {
     const brokerInitial = item.realtor_id ? `R${item.realtor_id}` : "MH";
 
     return (
@@ -353,9 +440,9 @@ function ListingCard({ item, onDetails }) {
                     className="mh-fav"
                     type="button"
                     aria-label={saved ? "Remove from saved" : "Save listing"}
-                    onClick={() => setSaved((s) => !s)}
+                    onClick={onToggleFavorite}
                 >
-                    {saved ? "♥" : "♡"}
+                    {saved ? "Saved" : "Save"}
                 </button>
 
                 <div className="mh-pillTag">{labelType(item.property_type)}</div>
